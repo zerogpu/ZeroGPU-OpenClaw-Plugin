@@ -1,0 +1,26 @@
+{
+  "updatedAt": "2026-04-15T00:00:00Z",
+  "models": [
+    {
+      "id": "nano-classify-v1",
+      "provider": "zerogpu",
+      "supportedTaskTypes": ["classification"],
+      "costPer1kTokensUsd": 0.0002,
+      "avgLatencyMs": 120
+    },
+    {
+      "id": "nano-extract-v1",
+      "provider": "zerogpu",
+      "supportedTaskTypes": ["extraction"],
+      "costPer1kTokensUsd": 0.00025,
+      "avgLatencyMs": 150
+    },
+    {
+      "id": "small-summarize-v1",
+      "provider": "zerogpu",
+      "supportedTaskTypes": ["summarization", "follow_up_generation"],
+      "costPer1kTokensUsd": 0.00045,
+      "avgLatencyMs": 230
+    }
+  ]
+}

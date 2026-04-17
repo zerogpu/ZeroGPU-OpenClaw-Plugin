@@ -1,0 +1,10 @@
+{
+  "name": "openclaw-zerogpu",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw + zerogpu MVP: skill + dynamic routing plugin + savings tracking",
+  "type": "module",
+  "scripts": {
+    "start": "node plugin/index.mjs"
+  }
+}

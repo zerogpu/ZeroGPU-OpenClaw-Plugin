@@ -106,3 +106,50 @@ User query -> Agent -> Skill suggests `zerogpu` -> Agent calls plugin -> Plugin 
 - **Proof of value:** dashboard quantifies savings and performance over time
 
 This makes `zerogpu` a practical optimization layer for agent ecosystems rather than just another model endpoint.
+
+---
+
+## MVP Included in This Repo
+
+- `SKILL.md`: guidance layer for when to route tasks to `zerogpu`
+- `PLUGIN_SPEC.md`: execution contract and event schema
+- `plugin/index.mjs`: runnable plugin server with dynamic model selection
+- `plugin/model-catalog.json`: model capability catalog used for routing
+
+---
+
+## Run Locally
+
+From this folder:
+
+```bash
+npm start
+```
+
+Server starts on `http://localhost:8787`.
+
+### Quick checks
+
+```bash
+curl http://localhost:8787/health
+```
+
+```bash
+curl http://localhost:8787/v1/models
+```
+
+```bash
+curl -X POST http://localhost:8787/v1/zerogpu/chat/completions \
+  -H "content-type: application/json" \
+  -d '{
+    "model":"auto",
+    "messages":[
+      {"role":"user","content":"Summarize this feature request into 3 bullets."}
+    ],
+    "metadata":{"taskTypeHint":"summarization"}
+  }'
+```
+
+```bash
+curl http://localhost:8787/dashboard/summary
+```
