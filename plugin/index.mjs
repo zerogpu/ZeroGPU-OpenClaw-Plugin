@@ -9,10 +9,12 @@ const PORT = Number(process.env.PORT || 8787);
 const CATALOG_PATH = path.join(__dirname, "model-catalog.json");
 const TRACKING_PATH = path.join(__dirname, "tracking-events.jsonl");
 const CATALOG_REFRESH_MS = 60_000;
+const MODEL_CATALOG_URL = process.env.MODEL_CATALOG_URL || "https://api-dashboard.zerogpu.ai/api/models";
 const ESTIMATED_LLM_COST_PER_1K = Number(process.env.ESTIMATED_LLM_COST_PER_1K || 0.01);
 
 let catalogCache = { updatedAt: null, models: [] };
 let lastCatalogLoad = 0;
+let catalogSource = "local";
 
 function sendJson(res, statusCode, body) {
   res.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
@@ -25,10 +27,87 @@ async function loadCatalog(force = false) {
     return catalogCache;
   }
 
+  try {
+    const remoteCatalog = await fetchRemoteCatalog();
+    if (remoteCatalog.models.length > 0) {
+      catalogCache = remoteCatalog;
+      lastCatalogLoad = now;
+      catalogSource = "remote";
+      return catalogCache;
+    }
+  } catch (_) {
+    // Fall through to local catalog if remote catalog is unavailable.
+  }
+
   const raw = await fs.readFile(CATALOG_PATH, "utf8");
   catalogCache = JSON.parse(raw);
   lastCatalogLoad = now;
+  catalogSource = "local";
   return catalogCache;
+}
+
+function toTaskTypeSet(...values) {
+  const types = new Set();
+  const text = values
+    .flat()
+    .filter(Boolean)
+    .map((v) => String(v).toLowerCase())
+    .join(" ");
+
+  if (text.includes("classif")) types.add("classification");
+  if (text.includes("summar")) types.add("summarization");
+  if (text.includes("extract") || text.includes("entity") || text.includes("pii") || text.includes("json")) {
+    types.add("extraction");
+  }
+  if (text.includes("follow up") || text.includes("follow-up") || text.includes("question")) {
+    types.add("follow_up_generation");
+  }
+  if (types.size === 0 && text.includes("text generation")) types.add("summarization");
+  return [...types];
+}
+
+function mapRemoteModel(model) {
+  const pricing = model.pricing || {};
+  const inputPer1m = Number(pricing.input_per_1m_tokens || 0);
+  const outputPer1m = Number(pricing.output_per_1m_tokens || 0);
+  const blendedPer1k = inputPer1m || outputPer1m ? (inputPer1m + outputPer1m) / 2000 : 0.0005;
+
+  const usecaseHints = [
+    model.taskDisplayName,
+    ...(pricing.use_cases || []),
+    ...(Object.keys(model.modelUsecases || {}) || []),
+  ];
+  const supportedTaskTypes = toTaskTypeSet(usecaseHints);
+  if (supportedTaskTypes.length === 0) return null;
+
+  return {
+    id: model.modelId,
+    provider: "zerogpu",
+    supportedTaskTypes,
+    inputCostPer1kTokensUsd: Number((inputPer1m / 1000 || 0).toFixed(8)),
+    outputCostPer1kTokensUsd: Number((outputPer1m / 1000 || 0).toFixed(8)),
+    costPer1kTokensUsd: Number(blendedPer1k.toFixed(8)),
+    avgLatencyMs: 200,
+    maxTokens: model.maxTokens || null,
+    quantized: Boolean(model.quantized),
+  };
+}
+
+async function fetchRemoteCatalog() {
+  const response = await fetch(MODEL_CATALOG_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch remote catalog: ${response.status}`);
+  }
+  const json = await response.json();
+  if (!json?.success || !Array.isArray(json.models)) {
+    throw new Error("Unexpected remote catalog response shape");
+  }
+
+  const models = json.models.map(mapRemoteModel).filter(Boolean);
+  return {
+    updatedAt: new Date().toISOString(),
+    models,
+  };
 }
 
 function detectTaskType(messages, taskTypeHint) {
@@ -56,8 +135,30 @@ function detectTaskType(messages, taskTypeHint) {
 function selectModel(catalog, taskType) {
   const candidates = catalog.models.filter((m) => (m.supportedTaskTypes || []).includes(taskType));
   if (candidates.length === 0) return null;
-  candidates.sort((a, b) => a.costPer1kTokensUsd - b.costPer1kTokensUsd || a.avgLatencyMs - b.avgLatencyMs);
+  candidates.sort((a, b) => getBlendedCostPer1k(a) - getBlendedCostPer1k(b) || a.avgLatencyMs - b.avgLatencyMs);
   return candidates[0];
+}
+
+function getBlendedCostPer1k(model) {
+  if (typeof model.costPer1kTokensUsd === "number" && model.costPer1kTokensUsd > 0) {
+    return model.costPer1kTokensUsd;
+  }
+  const input = Number(model.inputCostPer1kTokensUsd || 0);
+  const output = Number(model.outputCostPer1kTokensUsd || 0);
+  if (input > 0 || output > 0) return (input + output) / 2;
+  return 0.0005;
+}
+
+function computeZeroGpuCostUsd(model, promptTokens, completionTokens) {
+  const inputCostPer1k = Number(model.inputCostPer1kTokensUsd || 0);
+  const outputCostPer1k = Number(model.outputCostPer1kTokensUsd || 0);
+
+  if (inputCostPer1k > 0 || outputCostPer1k > 0) {
+    return (promptTokens / 1000) * inputCostPer1k + (completionTokens / 1000) * outputCostPer1k;
+  }
+
+  // Backward-compatible fallback for local/static catalogs with only blended pricing.
+  return ((promptTokens + completionTokens) / 1000) * getBlendedCostPer1k(model);
 }
 
 function estimateTokens(messages) {
@@ -145,7 +246,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/v1/models") {
       const catalog = await loadCatalog();
-      return sendJson(res, 200, catalog);
+      return sendJson(res, 200, { ...catalog, source: catalogSource });
     }
 
     if (req.method === "POST" && url.pathname === "/v1/zerogpu/chat/completions") {
@@ -163,8 +264,7 @@ const server = http.createServer(async (req, res) => {
       const completionText = buildMockOutput(taskType, messages);
       const completionTokens = estimateTokens([{ content: completionText }]);
       const totalTokens = promptTokens + completionTokens;
-
-      const zerogpuCost = (totalTokens / 1000) * selectedModel.costPer1kTokensUsd;
+      const zerogpuCost = computeZeroGpuCostUsd(selectedModel, promptTokens, completionTokens);
       const estimatedLlmCost = (totalTokens / 1000) * ESTIMATED_LLM_COST_PER_1K;
       const savings = Math.max(0, estimatedLlmCost - zerogpuCost);
       const latencyMs = Date.now() - startedAt;

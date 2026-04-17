@@ -114,7 +114,7 @@ This makes `zerogpu` a practical optimization layer for agent ecosystems rather 
 - `SKILL.md`: guidance layer for when to route tasks to `zerogpu`
 - `PLUGIN_SPEC.md`: execution contract and event schema
 - `plugin/index.mjs`: runnable plugin server with dynamic model selection
-- `plugin/model-catalog.json`: model capability catalog used for routing
+- `plugin/model-catalog.json`: local fallback model catalog used if remote fetch fails
 
 ---
 
@@ -127,6 +127,12 @@ npm start
 ```
 
 Server starts on `http://localhost:8787`.
+
+By default the plugin fetches models from:
+
+- `https://api-dashboard.zerogpu.ai/api/models`
+
+You can override this with `MODEL_CATALOG_URL`.
 
 ### Quick checks
 
