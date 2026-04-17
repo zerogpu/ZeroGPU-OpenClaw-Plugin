@@ -14,6 +14,8 @@ const ESTIMATED_LLM_COST_PER_1K = Number(process.env.ESTIMATED_LLM_COST_PER_1K |
 const INFERENCE_API_URL = process.env.INFERENCE_API_URL || "https://api.zerogpu.ai/v1/responses";
 const INFERENCE_TIMEOUT_MS = Number(process.env.INFERENCE_TIMEOUT_MS || 10_000);
 const INFERENCE_MAX_RETRIES = Number(process.env.INFERENCE_MAX_RETRIES || 2);
+const DEFAULT_CLASSIFICATION_CATEGORIES = (process.env.DEFAULT_CLASSIFICATION_CATEGORIES ||
+  "Technology,Business,Health,Sports,Entertainment,Politics,Finance,Education,Lifestyle").split(",");
 
 let catalogCache = { updatedAt: null, models: [] };
 let lastCatalogLoad = 0;
@@ -222,6 +224,32 @@ function toResponsesInput(messages) {
   }));
 }
 
+function ensureClassificationSystemMessage(messages, taskType) {
+  const normalized = Array.isArray(messages) ? [...messages] : [];
+  if (taskType !== "classification") return normalized;
+
+  const hasCategorySystemPrompt = normalized.some((m) => {
+    if (m?.role !== "system") return false;
+    const text = String(m?.content || "").toLowerCase();
+    return text.includes("categor") || text.includes("label") || text.includes("class");
+  });
+  if (hasCategorySystemPrompt) return normalized;
+
+  const categories = DEFAULT_CLASSIFICATION_CATEGORIES.map((c) => c.trim()).filter(Boolean);
+  const categoriesJson = JSON.stringify(categories);
+  normalized.unshift({
+    role: "system",
+    content: [
+      "You are a strict single-label classifier.",
+      `Allowed categories (JSON array): ${categoriesJson}`,
+      'Return JSON only in this exact shape: {"category":"<one allowed label>","confidence":0.0}',
+      "Do not return scores for multiple labels.",
+      "Do not include explanations.",
+    ].join("\n"),
+  });
+  return normalized;
+}
+
 async function postInference({ apiKey, projectId, modelId, messages }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS);
@@ -353,8 +381,9 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 400, { error: `No model available for task type: ${taskType}` });
       }
 
+      const preparedMessages = ensureClassificationSystemMessage(messages, taskType);
       const startedAt = Date.now();
-      const promptTokens = estimateTokens(messages);
+      const promptTokens = estimateTokens(preparedMessages);
       let completionText = "";
       let completionTokens = 0;
       const { apiKey, projectId } = getRequestCredentials(req);
@@ -365,13 +394,13 @@ const server = http.createServer(async (req, res) => {
           apiKey,
           projectId,
           modelId: selectedModel.id,
-          messages,
+          messages: preparedMessages,
         });
         completionText = getContentFromInferenceResponse(inferenceJson);
       }
 
       if (!completionText) {
-        completionText = buildMockOutput(taskType, messages);
+        completionText = buildMockOutput(taskType, preparedMessages);
       }
       completionTokens = estimateTokens([{ content: completionText }]);
       const totalTokens = promptTokens + completionTokens;
