@@ -266,3 +266,66 @@ curl -X POST http://localhost:8787/v1/zerogpu/chat/completions \
 ```bash
 curl http://localhost:8787/dashboard/summary
 ```
+
+## OpenClaw Copy-Paste Prompt (Easy Setup)
+
+Copy this prompt directly into OpenClaw:
+
+```text
+Set up ZeroGPU-OpenClaw-Skill locally for me and configure it as a tool.
+
+Steps to execute:
+
+1) Clone and run
+- git clone https://github.com/zerogpu/ZeroGPU-OpenClaw-Skill.git
+- cd ZeroGPU-OpenClaw-Skill
+- npm install
+- export ZEROGPU_API_KEY="<PASTE_MY_API_KEY>"
+- export ZEROGPU_PROJECT_ID="<PASTE_MY_PROJECT_ID>"
+- npm start
+
+2) Verify plugin
+- curl http://localhost:8787/health
+- curl http://localhost:8787/v1/models
+
+3) Register OpenClaw HTTP tool
+Create tool:
+- name: zerogpu_chat
+- method: POST
+- url: http://localhost:8787/v1/zerogpu/chat/completions
+- headers:
+  - content-type: application/json
+- body template:
+{
+  "model": "auto",
+  "messages": [
+    { "role": "user", "content": "{{user_input}}" }
+  ]
+}
+
+Important:
+- Do NOT write API keys into any file (TOOLS.md, AGENTS.md, repo files).
+- Use only shell environment variables for secrets.
+- If port 8787 is in use, kill existing process and restart plugin.
+
+4) Live test
+Run:
+curl -X POST http://localhost:8787/v1/zerogpu/chat/completions \
+  -H "content-type: application/json" \
+  -d '{
+    "model":"auto",
+    "messages":[
+      {"role":"user","content":"Classify this paragraph into a likely IAB category and return only category + confidence."}
+    ]
+  }'
+
+5) Confirm it worked
+- curl "http://localhost:8787/dashboard/events?limit=1"
+- curl http://localhost:8787/dashboard/summary
+
+Return to me:
+- whether setup succeeded
+- tool config that was registered
+- health/models/test outputs
+- last dashboard event
+```
