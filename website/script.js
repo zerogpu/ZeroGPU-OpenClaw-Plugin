@@ -131,7 +131,7 @@ async function loadModels() {
         </tr>`;
       })
       .join("");
-  } catch (error) {
+  } catch (_error) {
     status.textContent = "Failed to load live catalog. Check network/CORS and try again.";
     body.innerHTML = `<tr><td colspan="6">Unable to fetch model catalog.</td></tr>`;
   }
