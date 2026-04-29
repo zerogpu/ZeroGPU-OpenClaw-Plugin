@@ -17,7 +17,7 @@ Clone the repo inside your OpenCLAW environment and run the setup helper:
 git clone https://github.com/zerogpu/openclaw-zerogpu.git
 cd openclaw-zerogpu
 npm install
-ADAPTER_BASE_URL="https://YOUR_RENDER_URL/v1" npm run setup:openclaw
+ADAPTER_BASE_URL="https://zerogpu-openclaw-plugin.onrender.com/v1" npm run setup:openclaw
 ```
 
 The script asks for:
@@ -30,7 +30,7 @@ It stores those credentials in OpenCLAW provider config as an encoded provider t
 If OpenCLAW Cloud cannot restart the gateway automatically, run:
 
 ```bash
-SKIP_GATEWAY_RESTART=1 ADAPTER_BASE_URL="https://YOUR_RENDER_URL/v1" npm run setup:openclaw
+SKIP_GATEWAY_RESTART=1 ADAPTER_BASE_URL="https://zerogpu-openclaw-plugin.onrender.com/v1" npm run setup:openclaw
 ```
 
 Then restart or reload the gateway from the OpenCLAW Cloud UI.
@@ -53,7 +53,7 @@ TOKEN="$(node -e 'const payload={apiKey:process.env.ZEROGPU_API_KEY,projectId:pr
 
 openclaw config set models.providers.zerogpu "$(cat <<EOF
 {
-  "baseUrl": "https://YOUR_RENDER_URL/v1",
+  "baseUrl": "https://zerogpu-openclaw-plugin.onrender.com/v1",
   "api": "openai-completions",
   "apiKey": "$TOKEN",
   "models": [
