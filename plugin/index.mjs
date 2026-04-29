@@ -20,12 +20,45 @@ const DEFAULT_API_KEY = process.env.ZEROGPU_API_KEY || "";
 const DEFAULT_PROJECT_ID = process.env.ZEROGPU_PROJECT_ID || "";
 const DEFAULT_SHOW_SAVINGS = String(process.env.DEFAULT_SHOW_SAVINGS || "true").toLowerCase() !== "false";
 
+const PROVIDER_MODELS = [
+  { id: "zerogpu/auto", name: "ZeroGPU Auto" },
+  { id: "zerogpu/chat", name: "ZeroGPU Chat" },
+  { id: "zerogpu/chat-thinking", name: "ZeroGPU Chat Thinking" },
+  { id: "zerogpu/summarize", name: "ZeroGPU Summarize" },
+  { id: "zerogpu/classify", name: "ZeroGPU Classify" },
+  { id: "zerogpu/extract", name: "ZeroGPU Extract" },
+  { id: "zerogpu/followups", name: "ZeroGPU Follow-up Questions" },
+];
+
+const MODEL_ALIASES = {
+  "zerogpu/chat": { taskType: null, modelId: "LFM2.5-1.2B-Instruct" },
+  "zerogpu/chat-thinking": { taskType: null, modelId: "LFM2.5-1.2B-Thinking" },
+  "zerogpu/summarize": { taskType: "summarization", modelId: "t5-small" },
+  "zerogpu/classify": { taskType: "classification", modelId: "deberta-v3-small" },
+  "zerogpu/extract": { taskType: "extraction", modelId: "gliner2-base-v1" },
+  "zerogpu/followups": { taskType: "follow_up_generation", modelId: "zlm-v1-followup-questions-edge" },
+};
+
 let catalogCache = { updatedAt: null, models: [] };
 let lastCatalogLoad = 0;
 let catalogSource = "local";
 
+class UpstreamInferenceError extends Error {
+  constructor(statusCode, detail) {
+    super(`Inference API error: ${detail}`);
+    this.name = "UpstreamInferenceError";
+    this.statusCode = statusCode;
+    this.detail = detail;
+  }
+}
+
 function sendJson(res, statusCode, body) {
-  res.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
+  res.writeHead(statusCode, {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": "*",
+    "access-control-allow-headers": "authorization, content-type, x-api-key, x-project-id",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+  });
   res.end(JSON.stringify(body, null, 2));
 }
 
@@ -140,6 +173,35 @@ function detectTaskType(messages, taskTypeHint) {
   return "summarization";
 }
 
+function resolveAlias(model) {
+  return MODEL_ALIASES[String(model || "").trim()] || null;
+}
+
+function taskTypeFromModel(model, messages, taskTypeHint) {
+  const alias = resolveAlias(model);
+  return alias?.taskType || detectTaskType(messages, taskTypeHint);
+}
+
+function requestedModelForSelection(model) {
+  const requested = String(model || "").trim();
+  if (!requested || requested === "auto" || requested === "zerogpu/auto") return "auto";
+  return resolveAlias(requested)?.modelId || requested;
+}
+
+function providerModelList() {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    object: "list",
+    data: PROVIDER_MODELS.map((model) => ({
+      id: model.id,
+      object: "model",
+      created: now,
+      owned_by: "zerogpu",
+      name: model.name,
+    })),
+  };
+}
+
 function selectModels(catalog, taskType, messages, requestedModel) {
   const requested = String(requestedModel || "").trim();
   const hasRequested = requested && requested.toLowerCase() !== "auto";
@@ -233,6 +295,8 @@ function getRequestCredentials(req) {
   let apiKey = "";
   if (typeof auth === "string" && auth.toLowerCase().startsWith("bearer ")) {
     apiKey = auth.slice(7).trim();
+    const tokenCredentials = parseCredentialToken(apiKey);
+    if (tokenCredentials) return tokenCredentials;
   }
 
   const headerApiKey = req.headers["x-api-key"];
@@ -244,6 +308,20 @@ function getRequestCredentials(req) {
     apiKey: apiKey || DEFAULT_API_KEY,
     projectId: (typeof projectId === "string" ? projectId.trim() : "") || DEFAULT_PROJECT_ID,
   };
+}
+
+function parseCredentialToken(token) {
+  if (!String(token || "").startsWith("zgpu-user-")) return null;
+  try {
+    const raw = Buffer.from(String(token).slice("zgpu-user-".length), "base64url").toString("utf8");
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.apiKey === "string" && typeof parsed?.projectId === "string") {
+      return { apiKey: parsed.apiKey, projectId: parsed.projectId };
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function toResponsesInput(messages) {
@@ -387,7 +465,7 @@ async function postInference({ apiKey, projectId, modelId, messages, body, taskT
 
     if (!response.ok) {
       const detail = json?.error?.message || json?.message || `status ${response.status}`;
-      throw new Error(`Inference API error: ${detail}`);
+      throw new UpstreamInferenceError(response.status, detail);
     }
     return json;
   } finally {
@@ -490,21 +568,32 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
+    if (req.method === "OPTIONS") {
+      return sendJson(res, 204, {});
+    }
+
     if (req.method === "GET" && url.pathname === "/health") {
       return sendJson(res, 200, { ok: true, service: "zerogpu-plugin" });
     }
 
     if (req.method === "GET" && url.pathname === "/v1/models") {
-      const catalog = await loadCatalog();
-      return sendJson(res, 200, { ...catalog, source: catalogSource });
+      return sendJson(res, 200, providerModelList());
     }
 
-    if (req.method === "POST" && url.pathname === "/v1/zerogpu/chat/completions") {
+    if (req.method === "GET" && url.pathname === "/v1/zerogpu/models") {
+      const catalog = await loadCatalog();
+      return sendJson(res, 200, { ...catalog, source: catalogSource, providerModels: providerModelList().data });
+    }
+
+    if (
+      req.method === "POST" &&
+      (url.pathname === "/v1/chat/completions" || url.pathname === "/v1/zerogpu/chat/completions")
+    ) {
       const body = await parseJsonBody(req);
       const messages = body.messages || [];
-      const taskType = detectTaskType(messages, body?.metadata?.taskTypeHint);
+      const taskType = taskTypeFromModel(body?.model, messages, body?.metadata?.taskTypeHint);
       const catalog = await loadCatalog();
-      const rankedModels = selectModels(catalog, taskType, messages, body?.model);
+      const rankedModels = selectModels(catalog, taskType, messages, requestedModelForSelection(body?.model));
       const selectedModel = rankedModels[0];
       const suggestionModel = rankedModels[1]?.id || null;
       if (!selectedModel) {
@@ -517,7 +606,14 @@ const server = http.createServer(async (req, res) => {
       let completionText = "";
       let completionTokens = 0;
       const { apiKey, projectId } = getRequestCredentials(req);
-      const shouldUseLiveInference = Boolean(INFERENCE_API_URL && apiKey && projectId);
+      if (!apiKey || !projectId) {
+        return sendJson(res, 401, {
+          error: "missing_zerogpu_credentials",
+          message:
+            "Provide Authorization: Bearer zgpu-user-<encoded credentials> or x-api-key and x-project-id headers.",
+        });
+      }
+      const shouldUseLiveInference = Boolean(INFERENCE_API_URL);
 
       if (shouldUseLiveInference) {
         const inferenceJson = await callInferenceWithRetry({
@@ -622,6 +718,12 @@ const server = http.createServer(async (req, res) => {
 
     return sendJson(res, 404, { error: "Not found" });
   } catch (error) {
+    if (error instanceof UpstreamInferenceError) {
+      return sendJson(res, error.statusCode, {
+        error: "zerogpu_upstream_error",
+        detail: error.detail,
+      });
+    }
     return sendJson(res, 500, { error: "Internal server error", detail: String(error.message || error) });
   }
 });

@@ -17,7 +17,7 @@
           <img class="brand-logo" src="https://zerogpu.ai/favicon.png" alt="ZeroGPU" />
           <span>ZeroGPU Routing</span>
         </div>
-        <a class="btn btn-ghost" href="https://github.com/zerogpu/ZeroGPU-OpenClaw-Skill">GitHub</a>
+        <a class="btn btn-ghost" href="https://github.com/zerogpu/openclaw-zerogpu">GitHub</a>
       </div>
     </header>
 
@@ -31,7 +31,7 @@
             Keep LLMs for hard tasks. Track savings on every call.
           </p>
           <div class="hero-cta">
-            <a class="btn btn-primary" href="https://github.com/zerogpu/ZeroGPU-OpenClaw-Skill">Get Started</a>
+            <a class="btn btn-primary" href="https://github.com/zerogpu/openclaw-zerogpu">Get Started</a>
             <a class="btn btn-ghost" href="#how">How it works</a>
           </div>
         </div>
@@ -52,8 +52,8 @@
             <p class="metric-value">~5 min</p>
           </article>
           <article class="metric-card">
-            <p class="metric-label">Local endpoint</p>
-            <p class="metric-value">/v1/zerogpu/chat/completions</p>
+            <p class="metric-label">Provider endpoint</p>
+            <p class="metric-value">/v1/chat/completions</p>
           </article>
         </div>
       </section>
@@ -62,11 +62,11 @@
         <div class="container">
           <div class="section-head">
             <h2>Install in one click</h2>
-            <p>Paste this prompt into OpenClaw to auto-setup locally.</p>
+            <p>Paste this prompt into OpenCLAW to configure the hosted provider.</p>
           </div>
           <div class="install-grid">
             <article class="install-card">
-              <p class="install-label">OpenClaw bootstrap prompt</p>
+              <p class="install-label">OpenCLAW bootstrap prompt</p>
               <textarea id="installPrompt" readonly></textarea>
               <div class="install-actions">
                 <button id="copyPromptBtn" class="btn btn-primary" type="button">Copy Prompt</button>
@@ -76,11 +76,11 @@
             <article class="install-card">
               <p class="install-label">Manual setup (if you prefer)</p>
               <ol class="manual-list">
-                <li>Clone `ZeroGPU-OpenClaw-Plugin` and run `npm install`.</li>
-                <li>Export `ZEROGPU_API_KEY` and `ZEROGPU_PROJECT_ID` in shell.</li>
-                <li>Start plugin with `npm start` and verify `/health`.</li>
-                <li>Add OpenClaw HTTP tool to `http://localhost:8787/v1/zerogpu/chat/completions`.</li>
-                <li>Run one classification/summarization test and confirm savings metadata.</li>
+                <li>Clone `openclaw-zerogpu` and run `npm install`.</li>
+                <li>Run `ADAPTER_BASE_URL="https://YOUR_RENDER_URL/v1" npm run setup:openclaw`.</li>
+                <li>Enter the user's ZeroGPU API key and project ID when prompted.</li>
+                <li>Use `zerogpu/auto` or a task alias such as `zerogpu/summarize`.</li>
+                <li>Confirm dashboard events on the hosted adapter after a live call.</li>
               </ol>
             </article>
           </div>
@@ -94,12 +94,12 @@
             <article class="step-card">
               <p class="step-index">01</p>
               <h3>Agent receives request</h3>
-              <p>OpenClaw (or any agent) sends user intent to the routing tool.</p>
+              <p>OpenCLAW sends user intent through the configured ZeroGPU provider.</p>
             </article>
             <article class="step-card">
               <p class="step-index">02</p>
               <h3>Task is classified</h3>
-              <p>Plugin detects whether task is summarization, classification, extraction, or follow-up generation.</p>
+              <p>The adapter detects whether the task is summarization, classification, extraction, or follow-up generation.</p>
             </article>
             <article class="step-card">
               <p class="step-index">03</p>
@@ -109,7 +109,7 @@
             <article class="step-card">
               <p class="step-index">04</p>
               <h3>Response + savings returned</h3>
-              <p>Tool returns normalized output plus per-call cost, estimated LLM cost, and savings.</p>
+              <p>The provider returns normalized output plus per-call cost, estimated LLM cost, and savings.</p>
             </article>
           </div>
         </div>
@@ -166,16 +166,16 @@
       <section class="features">
         <div class="container feature-grid">
           <article class="feature-card">
-            <h3>Skill + plugin architecture</h3>
-            <p>Use skill rules for behavior and plugin logic for deterministic routing and observability.</p>
+            <h3>Provider adapter architecture</h3>
+            <p>Use OpenAI-compatible provider calls for deterministic routing and observability.</p>
           </article>
           <article class="feature-card">
             <h3>Secure by default</h3>
-            <p>Use shell env vars for `ZEROGPU_API_KEY` and `ZEROGPU_PROJECT_ID`; avoid writing secrets in docs.</p>
+            <p>Users provide credentials during setup; shared hosting does not store ZeroGPU secrets.</p>
           </article>
           <article class="feature-card">
-            <h3>Built for OpenClaw</h3>
-            <p>Drop in a single HTTP tool and use strict single-task routing to avoid accidental multi-task calls.</p>
+            <h3>Built for OpenCLAW</h3>
+            <p>Drop in a single provider and route small tasks through `zerogpu/auto`.</p>
           </article>
         </div>
       </section>
@@ -189,7 +189,7 @@
           </details>
           <details>
             <summary>Do users need to host anything?</summary>
-            <p>No. MVP setup is local clone + `npm start`. Hosting is optional for shared deployment.</p>
+            <p>No. Users only configure OpenCLAW with a hosted adapter URL and their own ZeroGPU credentials.</p>
           </details>
           <details>
             <summary>How do I verify savings?</summary>
@@ -202,7 +202,7 @@
     <footer class="footer">
       <div class="container footer-inner">
         <p>ZeroGPU Routing</p>
-        <a href="https://github.com/zerogpu/ZeroGPU-OpenClaw-Skill">View repository</a>
+        <a href="https://github.com/zerogpu/openclaw-zerogpu">View repository</a>
       </div>
     </footer>
 

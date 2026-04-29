@@ -29,34 +29,23 @@ const sampleRows = [
   },
 ];
 
-const installPrompt = `Set up ZeroGPU-OpenClaw-Skill locally for me and configure it as a tool.
+const installPrompt = `Set up openclaw+zerogpu as my OpenCLAW provider.
 
 Steps to execute:
-1) Clone and run
-- git clone https://github.com/zerogpu/ZeroGPU-OpenClaw-Plugin.git
-- cd ZeroGPU-OpenClaw-Plugin
+1) Clone and install
+- git clone https://github.com/zerogpu/openclaw-zerogpu.git
+- cd openclaw-zerogpu
 - npm install
-- export ZEROGPU_API_KEY="<PASTE_MY_API_KEY>"
-- export ZEROGPU_PROJECT_ID="<PASTE_MY_PROJECT_ID>"
-- npm start
 
-2) Verify plugin
-- curl http://localhost:8787/health
-- curl http://localhost:8787/v1/models
+2) Configure OpenCLAW provider
+- ADAPTER_BASE_URL="https://YOUR_RENDER_URL/v1" npm run setup:openclaw
+- Enter my ZeroGPU API key and project ID when prompted.
 
-3) Register OpenClaw HTTP tool
-- name: zerogpu_chat
-- method: POST
-- url: http://localhost:8787/v1/zerogpu/chat/completions
-- headers: content-type: application/json
-- body:
-{
-  "model": "auto",
-  "messages": [{ "role": "user", "content": "{{user_input}}" }]
-}
+3) Verify provider
+- openclaw config get models.providers.zerogpu
+- openclaw config get agents.defaults.model.primary
 
-4) Confirm setup
-- Return health/models/test output and the latest dashboard event.`;
+4) Test with a small summarization request using zerogpu/auto.`;
 
 function usd(v) {
   return `$${v.toFixed(6)}`;
@@ -91,7 +80,7 @@ function setupPromptCopy() {
   copyBtn.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(promptEl.value);
-      statusEl.textContent = "Copied. Paste into OpenClaw chat.";
+      statusEl.textContent = "Copied. Paste into OpenCLAW chat.";
     } catch {
       statusEl.textContent = "Copy failed. Select text and copy manually.";
     }

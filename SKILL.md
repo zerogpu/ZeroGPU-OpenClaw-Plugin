@@ -1,57 +1,48 @@
-# zerogpu Skill
+# zerogpu OpenCLAW Skill
 
 ## Purpose
 
-Use `zerogpu` as the default path for high-volume, well-defined SLM/NLM tasks.
+Use ZeroGPU for high-volume, well-defined tasks that do not require a large reasoning model:
 
-Route to `zerogpu` when the user asks for:
+- summarization
+- classification
+- extraction
+- follow-up question generation
+- lightweight routing or labeling
 
-- classification (intent, category, taxonomy)
-- summarization (short, structured summaries)
-- extraction (entities, fields, JSON)
-- routing or follow-up question generation
-- moderation or sentiment-style labeling
+## Provider Contract
 
-## Decision Rules
+Prefer the configured OpenCLAW provider model IDs:
 
-Prefer `zerogpu` when the request is structured, repetitive, and low-complexity.
+- `zerogpu/auto`
+- `zerogpu/summarize`
+- `zerogpu/classify`
+- `zerogpu/extract`
+- `zerogpu/followups`
+- `zerogpu/chat`
+- `zerogpu/chat-thinking`
 
-Avoid `zerogpu` for:
+OpenCLAW should call the hosted adapter through:
 
-- deep multi-step reasoning
-- long-form creative writing with nuanced style constraints
-- tasks requiring high uncertainty handling or broad world knowledge synthesis
+- `POST /v1/chat/completions`
 
-## Invocation Contract (Plugin endpoint)
-
-Use the local plugin adapter payload:
-
-```json
-{
-  "model": "auto",
-  "messages": [
-    { "role": "system", "content": "You are a task assistant." },
-    { "role": "user", "content": "Summarize this text in 3 bullets..." }
-  ],
-  "metadata": {
-    "taskTypeHint": "summarization"
-  }
-}
-```
-
-Send this payload to the `zerogpu` plugin endpoint:
+The legacy endpoint remains available only for compatibility:
 
 - `POST /v1/zerogpu/chat/completions`
 
-### Live ZeroGPU headers
+## Decision Rules
 
-When running in live mode, include:
+Choose `zerogpu/auto` when the user asks for a small, structured task and no specific alias is needed.
 
-- `x-api-key: <ZEROGPU_API_KEY>`
-- `x-project-id: <ZEROGPU_PROJECT_ID>`
+Choose task-specific aliases when intent is clear:
 
-The plugin will call ZeroGPU `POST /v1/responses` internally and return a normalized chat-style output to the agent.
+- `zerogpu/summarize` for summaries and bullet compression.
+- `zerogpu/classify` for labels, intents, categories, and sentiment-style decisions.
+- `zerogpu/extract` for entities, fields, JSON, and structured data.
+- `zerogpu/followups` for follow-up question generation.
 
-## Important Boundary
+Avoid ZeroGPU for deep multi-step reasoning, long creative writing, or tasks that require broad synthesis.
 
-This skill does not execute requests, choose models dynamically, or track savings. It only helps the agent decide when to invoke the plugin.
+## Credentials
+
+Users provide `ZEROGPU_API_KEY` and `ZEROGPU_PROJECT_ID` during setup. The setup script stores an encoded token in OpenCLAW provider config, and the hosted adapter forwards credentials per request. Do not store user ZeroGPU credentials in shared hosting environment variables.

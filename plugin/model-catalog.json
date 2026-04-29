@@ -1,26 +1,40 @@
 {
-  "updatedAt": "2026-04-15T00:00:00Z",
+  "updatedAt": "2026-04-29T00:00:00Z",
   "models": [
     {
-      "id": "nano-classify-v1",
+      "id": "deberta-v3-small",
       "provider": "zerogpu",
       "supportedTaskTypes": ["classification"],
       "costPer1kTokensUsd": 0.0002,
-      "avgLatencyMs": 120
+      "avgLatencyMs": 200
     },
     {
-      "id": "nano-extract-v1",
+      "id": "gliner2-base-v1",
       "provider": "zerogpu",
       "supportedTaskTypes": ["extraction"],
       "costPer1kTokensUsd": 0.00025,
-      "avgLatencyMs": 150
+      "avgLatencyMs": 250
     },
     {
-      "id": "small-summarize-v1",
+      "id": "t5-small",
       "provider": "zerogpu",
-      "supportedTaskTypes": ["summarization", "follow_up_generation"],
+      "supportedTaskTypes": ["summarization"],
       "costPer1kTokensUsd": 0.00045,
       "avgLatencyMs": 230
+    },
+    {
+      "id": "zlm-v1-followup-questions-edge",
+      "provider": "zerogpu",
+      "supportedTaskTypes": ["follow_up_generation"],
+      "costPer1kTokensUsd": 0.0005,
+      "avgLatencyMs": 260
+    },
+    {
+      "id": "LFM2.5-1.2B-Instruct",
+      "provider": "zerogpu",
+      "supportedTaskTypes": ["summarization", "classification", "extraction", "follow_up_generation"],
+      "costPer1kTokensUsd": 0.0008,
+      "avgLatencyMs": 300
     }
   ]
 }

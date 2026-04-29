@@ -2,9 +2,13 @@
   "name": "openclaw-zerogpu",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenClaw + zerogpu MVP: skill + dynamic routing plugin + savings tracking",
+  "description": "OpenCLAW + ZeroGPU hosted provider adapter with routing and savings tracking",
   "type": "module",
   "scripts": {
-    "start": "node plugin/index.mjs"
+    "start": "node plugin/index.mjs",
+    "postinstall": "node --check plugin/index.mjs",
+    "check": "node --check plugin/index.mjs",
+    "render-build": "npm install",
+    "setup:openclaw": "bash scripts/setup-openclaw-provider.sh"
   }
 }
