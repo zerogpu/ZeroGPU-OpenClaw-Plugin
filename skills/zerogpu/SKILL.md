@@ -1,29 +1,38 @@
 ---
 name: zerogpu
-description: ZeroGPU Router for OpenCLAW. Keep the user's normal primary model and offload lightweight tasks to ZeroGPU tools for summarization, classification, extraction, and follow-up generation.
+description: Use ZeroGPU Router tools for small, well-scoped AI tasks. Trigger on summarization, classification, extraction, JSON/entity parsing, and follow-up question generation. Keep the normal primary model for general reasoning and chat.
 metadata: {"openclaw":{"requires":{"bins":["openclaw"]},"homepage":"https://github.com/zerogpu/ZeroGPU-OpenClaw-Plugin"}}
 ---
 
-# ZeroGPU Router for OpenCLAW
+# ZeroGPU Router Offload Skill
 
-Use ZeroGPU for well-scoped tasks that do not need a large reasoning model:
+Use ZeroGPU Router as a task offload layer, not as the primary brain.
 
-- summarization
-- classification
-- extraction
-- follow-up question generation
-- lightweight chat
+Keep the user's existing primary model for general conversation, coding, planning, debugging, and reasoning. When the user asks for one of the focused tasks below, call the matching ZeroGPU tool instead of answering directly.
 
-## Tools And Model Aliases
+## Required Tool Routing
 
-Prefer tools when the user's primary model is not ZeroGPU:
+- Summaries, TL;DR, "summarize this", bullet summaries, compression -> call `zerogpu_summarize`.
+- Labels, categories, intents, sentiment-style decisions, taxonomy -> call `zerogpu_classify`.
+- Extract fields, entities, JSON, names, dates, contacts, structured data -> call `zerogpu_extract`.
+- Generate follow-up questions, next questions, interview prompts -> call `zerogpu_followups`.
 
-- `zerogpu_summarize`
-- `zerogpu_classify`
-- `zerogpu_extract`
-- `zerogpu_followups`
+## Do Not Use ZeroGPU For
 
-Model aliases are also available for explicit model selection:
+- Deep reasoning
+- Coding implementation
+- Multi-step planning
+- Debugging
+- Broad research or synthesis
+- Long-form creative writing
+
+## Operating Rule
+
+If the request is a focused task listed above, use the ZeroGPU tool first and return its result. If the request needs reasoning or judgment beyond the tool result, use the primary model after the tool call to explain or format the answer.
+
+## Model Aliases
+
+Model aliases are available for explicit model selection:
 
 - `zerogpu/auto`
 - `zerogpu/summarize`

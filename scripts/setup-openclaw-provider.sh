@@ -14,6 +14,7 @@ fi
 ADAPTER_BASE_URL="${ADAPTER_BASE_URL:-https://zerogpu-openclaw-plugin.onrender.com/v1}"
 PRIMARY_MODEL="${PRIMARY_MODEL:-zerogpu/auto}"
 SET_ZEROGPU_AS_DEFAULT="${SET_ZEROGPU_AS_DEFAULT:-0}"
+INSTALL_ZEROGPU_SKILL="${INSTALL_ZEROGPU_SKILL:-1}"
 ZEROGPU_API_KEY="${ZEROGPU_API_KEY:-}"
 ZEROGPU_PROJECT_ID="${ZEROGPU_PROJECT_ID:-}"
 
@@ -68,6 +69,52 @@ else
   echo "Set SET_ZEROGPU_AS_DEFAULT=1 if you want ${PRIMARY_MODEL} as the global default."
 fi
 
+install_skill_dir() {
+  local skill_dir="$1"
+  mkdir -p "$skill_dir"
+  cat > "${skill_dir}/SKILL.md" <<'EOF'
+---
+name: zerogpu
+description: Use ZeroGPU Router tools for small, well-scoped AI tasks. Trigger on summarization, classification, extraction, JSON/entity parsing, and follow-up question generation. Keep the normal primary model for general reasoning and chat.
+metadata: {"openclaw":{"requires":{"bins":["openclaw"]},"homepage":"https://github.com/zerogpu/ZeroGPU-OpenClaw-Plugin"}}
+---
+
+# ZeroGPU Router Offload Skill
+
+Use ZeroGPU Router as a task offload layer, not as the primary brain.
+
+Keep the user's existing primary model for general conversation, coding, planning, debugging, and reasoning. When the user asks for one of the focused tasks below, call the matching ZeroGPU tool instead of answering directly.
+
+## Required Tool Routing
+
+- Summaries, TL;DR, "summarize this", bullet summaries, compression -> call `zerogpu_summarize`.
+- Labels, categories, intents, sentiment-style decisions, taxonomy -> call `zerogpu_classify`.
+- Extract fields, entities, JSON, names, dates, contacts, structured data -> call `zerogpu_extract`.
+- Generate follow-up questions, next questions, interview prompts -> call `zerogpu_followups`.
+
+## Do Not Use ZeroGPU For
+
+- Deep reasoning
+- Coding implementation
+- Multi-step planning
+- Debugging
+- Broad research or synthesis
+- Long-form creative writing
+
+## Operating Rule
+
+If the request is a focused task listed above, use the ZeroGPU tool first and return its result. If the request needs reasoning or judgment beyond the tool result, use the primary model after the tool call to explain or format the answer.
+EOF
+}
+
+if [[ "$INSTALL_ZEROGPU_SKILL" == "1" ]]; then
+  install_skill_dir "${PWD}/skills/zerogpu"
+  if [[ -d "${HOME}/.openclaw" ]]; then
+    install_skill_dir "${HOME}/.openclaw/skills/zerogpu"
+  fi
+  echo "Installed ZeroGPU skill guidance."
+fi
+
 if [[ "${SKIP_GATEWAY_RESTART:-0}" == "1" ]]; then
   echo "Skipped gateway restart because SKIP_GATEWAY_RESTART=1."
 elif ! openclaw gateway restart; then
@@ -77,6 +124,9 @@ fi
 
 echo "OpenCLAW configured for ZeroGPU."
 echo "Provider: models.providers.zerogpu"
+if [[ "$INSTALL_ZEROGPU_SKILL" == "1" ]]; then
+  echo "Skill: zerogpu"
+fi
 if [[ "$SET_ZEROGPU_AS_DEFAULT" == "1" ]]; then
   echo "Primary model: ${PRIMARY_MODEL}"
 else
@@ -87,3 +137,4 @@ echo
 echo "Verify with:"
 echo "  openclaw config get models.providers.zerogpu"
 echo "  openclaw config get agents.defaults.model.primary"
+echo "  openclaw skills list | grep -i zerogpu"

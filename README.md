@@ -31,7 +31,7 @@ The installer asks for:
 - `ZeroGPU API key`
 - `ZeroGPU project ID`
 
-It stores those credentials in OpenCLAW provider config as an encoded provider token. The hosted adapter stays stateless and your primary model remains unchanged.
+It stores those credentials in OpenCLAW provider config as an encoded provider token, and installs local `zerogpu` skill guidance so the normal agent knows when to call the offload tools. The hosted adapter stays stateless and your primary model remains unchanged.
 
 For OpenCLAW Cloud environments where restart is handled by the UI:
 
@@ -40,6 +40,13 @@ curl -fsSL https://raw.githubusercontent.com/zerogpu/ZeroGPU-OpenClaw-Plugin/mai
 ```
 
 Then restart or reload the gateway from the OpenCLAW Cloud UI.
+
+Verify the skill and provider are visible:
+
+```bash
+openclaw config get models.providers.zerogpu
+openclaw skills list | grep -i zerogpu
+```
 
 To intentionally make ZeroGPU the global default model, opt in explicitly:
 
