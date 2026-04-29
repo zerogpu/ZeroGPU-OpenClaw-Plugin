@@ -47,7 +47,7 @@ Verify the skill and provider are visible:
 ```bash
 openclaw config get models.providers.zerogpu
 openclaw skills list | grep -i zerogpu
-zerogpu-router summarize "Summarize this sentence."
+$HOME/.openclaw/bin/zerogpu-router summarize "Summarize this sentence."
 ```
 
 To intentionally make ZeroGPU the global default model, opt in explicitly:

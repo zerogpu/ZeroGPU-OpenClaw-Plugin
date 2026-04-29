@@ -97,10 +97,10 @@ Keep the user's existing primary model for general conversation, coding, plannin
 
 ## Required Tool Routing
 
-- Summaries, TL;DR, "summarize this", bullet summaries, compression -> run `zerogpu-router summarize`.
-- Labels, categories, intents, sentiment-style decisions, taxonomy -> run `zerogpu-router classify`.
-- Extract fields, entities, JSON, names, dates, contacts, structured data -> run `zerogpu-router extract`.
-- Generate follow-up questions, next questions, interview prompts -> run `zerogpu-router followups`.
+- Summaries, TL;DR, "summarize this", bullet summaries, compression -> run `$HOME/.openclaw/bin/zerogpu-router summarize`.
+- Labels, categories, intents, sentiment-style decisions, taxonomy -> run `$HOME/.openclaw/bin/zerogpu-router classify`.
+- Extract fields, entities, JSON, names, dates, contacts, structured data -> run `$HOME/.openclaw/bin/zerogpu-router extract`.
+- Generate follow-up questions, next questions, interview prompts -> run `$HOME/.openclaw/bin/zerogpu-router followups`.
 
 ## Do Not Use ZeroGPU For
 
@@ -113,18 +113,18 @@ Keep the user's existing primary model for general conversation, coding, plannin
 
 ## Operating Rule
 
-If the request is a focused task listed above, run the matching `zerogpu-router` command first and return its result. If the request needs reasoning or judgment beyond the command output, use the primary model after the command to explain or format the answer.
+If the request is a focused task listed above, run the matching `$HOME/.openclaw/bin/zerogpu-router` command first and return its result. If the request needs reasoning or judgment beyond the command output, use the primary model after the command to explain or format the answer.
 
 ## Command Examples
 
 ```bash
-zerogpu-router summarize <<'TEXT'
+$HOME/.openclaw/bin/zerogpu-router summarize <<'TEXT'
 Text to summarize...
 TEXT
 ```
 
 ```bash
-zerogpu-router classify "Text to classify"
+$HOME/.openclaw/bin/zerogpu-router classify "Text to classify"
 ```
 EOF
 }
@@ -251,6 +251,7 @@ if [[ "$INSTALL_ZEROGPU_SKILL" == "1" ]]; then
     install_skill_dir "${HOME}/.openclaw/skills/zerogpu"
     install_cli "${HOME}/.openclaw/bin"
   fi
+  install_cli "${HOME}/.local/bin"
   echo "Installed ZeroGPU skill guidance and CLI helper."
 fi
 
@@ -279,4 +280,5 @@ echo "Verify with:"
 echo "  openclaw config get models.providers.zerogpu"
 echo "  openclaw config get agents.defaults.model.primary"
 echo "  openclaw skills list | grep -i zerogpu"
-echo "  zerogpu-router summarize \"Summarize this sentence.\""
+echo "  ${HOME}/.openclaw/bin/zerogpu-router summarize \"Summarize this sentence.\""
+echo "  ${HOME}/.local/bin/zerogpu-router summarize \"Summarize this sentence.\""
